@@ -5,60 +5,65 @@ import (
 	"net/http"
 )
 
+type ValidationError struct {
+	Message string `json:"message"`
+	Field   string `json:"field,omitempty"`
+}
+
 type ErrorResponse struct {
-	Errors []ErrorDetail `json:"errors"`
+	Errors []ValidationError `json:"errors"`
 }
 
-type ErrorDetail struct {
-	Description string `json:"description"`
-	Field       string `json:"field,omitempty"`
-}
-
-type HttpError interface {
+type CustomError interface {
 	Error() string
 	StatusCode() int
-	SerializeErrors() []ErrorDetail
+	SerializeErrors() ErrorResponse
 }
 
-type ValidationError struct {
-	Detail string
-	Field  string
+type RequestValidationError struct {
+	ErrorResponse
 }
 
-func (e *ValidationError) Error() string {
-	return e.Detail
+func (e RequestValidationError) Error() string {
+	return "Error validating incoming properties"
 }
 
-func (e *ValidationError) SerializeErrors() []ErrorDetail {
-	return []ErrorDetail{{Description: e.Detail, Field: e.Field}}
+func (e RequestValidationError) SerializeErrors() ErrorResponse {
+	return e.ErrorResponse
+}
+
+func (e RequestValidationError) StatusCode() int {
+	return http.StatusBadRequest
 }
 
 type UnauthorizedError struct {
-	Detail string
+	Message string
 }
 
-func (e *UnauthorizedError) Error() string {
-	return e.Detail
+func (e UnauthorizedError) Error() string {
+	return "Lacks valid authentication credentials for the requested resource"
 }
 
-func (e *UnauthorizedError) SerializeErrors() []ErrorDetail {
-	return []ErrorDetail{{Description: e.Detail}}
+func (e UnauthorizedError) SerializeErrors() ErrorResponse {
+	return ErrorResponse{
+		Errors: []ValidationError{{Message: e.Message}},
+	}
+}
+
+func (e UnauthorizedError) StatusCode() int {
+	return http.StatusUnauthorized
 }
 
 func HandleError(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 
-	switch e := err.(type) {
-	case *ValidationError:
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Errors: e.SerializeErrors()})
-	case *UnauthorizedError:
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(ErrorResponse{Errors: e.SerializeErrors()})
-	default:
+	if customErr, ok := err.(CustomError); ok {
+		w.WriteHeader(customErr.StatusCode())
+		json.NewEncoder(w).Encode(customErr.SerializeErrors())
+	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(ErrorResponse{
-			Errors: []ErrorDetail{{Description: "Internal server error"}},
+			Errors: []ValidationError{{Message: "Internal server error"}},
 		})
 	}
 }

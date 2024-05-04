@@ -2,11 +2,12 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
 
-	"github.com/itsrojasleon/messaging-app/common/errors"
+	httpErrors "github.com/itsrojasleon/messaging-app/common/errors"
 	"github.com/itsrojasleon/messaging-app/common/validation"
 	jsonschema "github.com/xeipuuv/gojsonschema"
 )
@@ -17,12 +18,14 @@ type User struct {
 }
 
 func SignupHandler(w http.ResponseWriter, r *http.Request) {
+	httpErrors.HandleError(w, errors.New("hello"))
+	return
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		errors.HandleError(w, &errors.ValidationError{
-			Detail: "Invalid JSON provided",
-			Field:  "body",
-		})
+		// errors.HandleError(w, &errors.ValidationError{
+		// 	Detail: "Invalid JSON provided",
+		// 	Field:  "body",
+		// })
 		return
 	}
 
@@ -35,10 +38,15 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 		"password": "securepassword123"
 	}`)
 
-	_, isValid := validation.ValidateJSON(schema, documentLoader)
+	xxx, isValid := validation.ValidateJSON(schema, documentLoader)
 
 	if !isValid {
-		errors.HandleError(w, &errors.ValidationError{})
+		httpErrors.HandleError(w, &httpErrors.RequestValidationError{
+			ErrorResponse: httpErrors.ErrorResponse{
+				Errors: xxx,
+			},
+		})
+		// errors.HandleError(w, &errors.ValidationError{})
 	}
 
 	// Add logic here to add user to database etc.

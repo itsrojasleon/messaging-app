@@ -5,12 +5,12 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-func ValidateJSON(schemaLoader, documentLoader gojsonschema.JSONLoader) ([]errors.ErrorDetail, bool) {
+func ValidateJSON(schemaLoader, documentLoader gojsonschema.JSONLoader) ([]errors.ValidationError, bool) {
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
 	if err != nil {
-		return []errors.ErrorDetail{
+		return []errors.ValidationError{
 			{
-				Description: "Internal server error during validation: " + err.Error(),
+				Message: "Internal server error during validation: " + err.Error(),
 			},
 		}, false
 	}
@@ -19,11 +19,11 @@ func ValidateJSON(schemaLoader, documentLoader gojsonschema.JSONLoader) ([]error
 		return nil, true
 	}
 
-	var validationErrors []errors.ErrorDetail
+	var validationErrors []errors.ValidationError
 	for _, desc := range result.Errors() {
-		validationErrors = append(validationErrors, errors.ErrorDetail{
-			Description: desc.Description(),
-			Field:       desc.Field(),
+		validationErrors = append(validationErrors, errors.ValidationError{
+			Message: desc.Description(),
+			Field:   desc.Field(),
 		})
 	}
 	return validationErrors, false
