@@ -2,6 +2,7 @@ package errors
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -21,19 +22,21 @@ type CustomError interface {
 }
 
 type RequestValidationError struct {
-	ErrorResponse
+	ValidationErrors []ValidationError
 }
 
 func (e RequestValidationError) Error() string {
 	return "Error validating incoming properties"
 }
 
-func (e RequestValidationError) SerializeErrors() ErrorResponse {
-	return e.ErrorResponse
-}
-
 func (e RequestValidationError) StatusCode() int {
 	return http.StatusBadRequest
+}
+
+func (e RequestValidationError) SerializeErrors() ErrorResponse {
+	return ErrorResponse{
+		Errors: e.ValidationErrors,
+	}
 }
 
 type UnauthorizedError struct {
@@ -61,6 +64,7 @@ func HandleError(w http.ResponseWriter, err error) {
 		w.WriteHeader(customErr.StatusCode())
 		json.NewEncoder(w).Encode(customErr.SerializeErrors())
 	} else {
+		log.Printf("something went wrong" + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(ErrorResponse{
 			Errors: []ValidationError{{Message: "Internal server error"}},

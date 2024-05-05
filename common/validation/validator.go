@@ -6,7 +6,7 @@ import (
 )
 
 func ValidateJSON(schemaLoader, documentLoader gojsonschema.JSONLoader) ([]errors.ValidationError, bool) {
-	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+	res, err := gojsonschema.Validate(schemaLoader, documentLoader)
 	if err != nil {
 		return []errors.ValidationError{
 			{
@@ -15,16 +15,16 @@ func ValidateJSON(schemaLoader, documentLoader gojsonschema.JSONLoader) ([]error
 		}, false
 	}
 
-	if result.Valid() {
+	if res.Valid() {
 		return nil, true
 	}
 
-	var validationErrors []errors.ValidationError
-	for _, desc := range result.Errors() {
-		validationErrors = append(validationErrors, errors.ValidationError{
+	var valErrs []errors.ValidationError
+	for _, desc := range res.Errors() {
+		valErrs = append(valErrs, errors.ValidationError{
 			Message: desc.Description(),
 			Field:   desc.Field(),
 		})
 	}
-	return validationErrors, false
+	return valErrs, false
 }

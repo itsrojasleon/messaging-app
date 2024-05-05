@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,48 +17,33 @@ type User struct {
 }
 
 func SignupHandler(w http.ResponseWriter, r *http.Request) {
-	httpErrors.HandleError(w, errors.New("hello"))
-	return
 	var user User
+
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		// errors.HandleError(w, &errors.ValidationError{
-		// 	Detail: "Invalid JSON provided",
-		// 	Field:  "body",
-		// })
+		httpErrors.HandleError(w, httpErrors.RequestValidationError{
+			ValidationErrors: []httpErrors.ValidationError{{
+				Message: "Invalid JSON provided",
+				Field:   "body",
+			}},
+		})
 		return
 	}
 
 	dir, _ := os.Getwd()
 
-	schema := jsonschema.NewReferenceLoader("file://" + filepath.Join(dir, "../internal/schemas/signup-schema.json"))
-	// TODO: Rename.
-	documentLoader := jsonschema.NewStringLoader(`{
+	refLoader := jsonschema.NewReferenceLoader("file://" + filepath.Join(dir, "../internal/schemas/signup-schema.json"))
+	strLoader := jsonschema.NewStringLoader(`{
 		"email": "testuser",
 		"password": "securepassword123"
 	}`)
 
-	xxx, isValid := validation.ValidateJSON(schema, documentLoader)
-
-	if !isValid {
-		httpErrors.HandleError(w, &httpErrors.RequestValidationError{
-			ErrorResponse: httpErrors.ErrorResponse{
-				Errors: xxx,
-			},
+	if valErrs, isValid := validation.ValidateJSON(refLoader, strLoader); !isValid {
+		httpErrors.HandleError(w, httpErrors.RequestValidationError{
+			ValidationErrors: valErrs,
 		})
-		// errors.HandleError(w, &errors.ValidationError{})
 	}
 
 	// Add logic here to add user to database etc.
-
-	// response := map[string]string{"status": "success", "message": "User registered"}
-
-	// w.Header().Set("Content-Type", "application/json")
-	// w.WriteHeader(http.StatusCreated)
-
-	// if err := json.NewEncoder(w).Encode(response); err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
 }
 
 func SigninHandler(w http.ResponseWriter, r *http.Request) {
