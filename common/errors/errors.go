@@ -64,7 +64,7 @@ func HandleError(w http.ResponseWriter, err error) {
 		w.WriteHeader(customErr.StatusCode())
 		json.NewEncoder(w).Encode(customErr.SerializeErrors())
 	} else {
-		log.Printf("something went wrong" + err.Error())
+		log.Printf("something went wrong: " + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(ErrorResponse{
 			Errors: []ValidationError{{Message: "Internal server error"}},

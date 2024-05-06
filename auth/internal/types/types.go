@@ -1,7 +1,10 @@
 package types
 
-type User struct {
-	ID       string `json:"id"`
+type SignupCreds struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type SigninCreds struct {
+	SignupCreds
 }

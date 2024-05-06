@@ -6,38 +6,32 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/itsrojasleon/messaging-app/auth/internal/types"
 	httpErrors "github.com/itsrojasleon/messaging-app/common/errors"
-	"github.com/itsrojasleon/messaging-app/common/validation"
-	jsonschema "github.com/xeipuuv/gojsonschema"
+
+	"github.com/itsrojasleon/messaging-app/common/utils"
 )
 
-type User struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 func SignupHandler(w http.ResponseWriter, r *http.Request) {
-	var user User
+	var credentials types.SignupCreds
 
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		httpErrors.HandleError(w, httpErrors.RequestValidationError{
-			ValidationErrors: []httpErrors.ValidationError{{
-				Message: "Invalid JSON provided",
-				Field:   "body",
-			}},
-		})
+	if err := utils.ParseBody(r, &credentials); err != nil {
+		httpErrors.HandleError(w, err)
 		return
 	}
 
-	dir, _ := os.Getwd()
+	formattedCreds, err := utils.ToJson(credentials)
+	if err != nil {
+		httpErrors.HandleError(w, err)
+		return
+	}
 
-	refLoader := jsonschema.NewReferenceLoader("file://" + filepath.Join(dir, "../internal/schemas/signup-schema.json"))
-	strLoader := jsonschema.NewStringLoader(`{
-		"email": "testuser",
-		"password": "securepassword123"
-	}`)
-
-	if valErrs, isValid := validation.ValidateJSON(refLoader, strLoader); !isValid {
+	dir, err := os.Getwd()
+	if err != nil {
+		httpErrors.HandleError(w, err)
+	}
+	schemaPath := filepath.Join(dir, "../internal/schemas/signup.json")
+	if valErrs, isValid := utils.ValidateJSON(schemaPath, formattedCreds); !isValid {
 		httpErrors.HandleError(w, httpErrors.RequestValidationError{
 			ValidationErrors: valErrs,
 		})
@@ -47,14 +41,14 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SigninHandler(w http.ResponseWriter, r *http.Request) {
-	var user User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	var credentials types.SigninCreds
+	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "User logged in"})
+	json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "user logged in"})
 }
 
 func CurrentUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -62,5 +56,5 @@ func CurrentUserHandler(w http.ResponseWriter, r *http.Request) {
 	// 2. Return JWT data back to user.
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "Current user info"})
+	json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "current user info"})
 }
